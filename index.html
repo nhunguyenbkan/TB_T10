@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minigame Chọn Ngày Trực</title>
+    <!-- Tải Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #4f46e5;
+            --secondary-color: #ecf0f1;
+            --card-width: 150px;
+            --card-height: 200px;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+
+        .flip-card {
+            background-color: transparent;
+            width: var(--card-width);
+            height: var(--card-height);
+            perspective: 1000px; /* Tạo hiệu ứng 3D */
+            transition: opacity 0.3s;
+        }
+
+        .flip-card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            text-align: center;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+        }
+
+        /* Khi lật thẻ */
+        .flip-card.flipped .flip-card-inner {
+            transform: rotateY(180deg);
+        }
+
+        .flip-card-front, .flip-card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            -webkit-backface-visibility: hidden; /* Ẩn mặt sau khi không lật */
+            backface-visibility: hidden;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        /* Mặt trước (Mystery Card) */
+        .flip-card-front {
+            background: linear-gradient(135deg, #2d338a 0%, #4f46e5 100%); /* Deep Blue/Purple */
+            color: white;
+            border: 4px solid #2d338a;
+            user-select: none;
+        }
+
+        /* Mặt sau (Date Reveal) */
+        .flip-card-back {
+            background-color: white;
+            color: #374151;
+            transform: rotateY(180deg);
+            border: 4px solid #06b6d4; /* Cyan/Teal border */
+            display: flex;
+            padding: 1rem;
+            justify-content: center;
+            align-items: center; /* Căn giữa lại nội dung */
+        }
+
+        /* Hiển thị trên màn hình nhỏ */
+        @media (max-width: 640px) {
+            :root {
+                --card-width: 120px;
+                --card-height: 160px;
+            }
+            .grid-cols-4 {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        .selected-card {
+            border: 4px solid #f97316; /* Màu cam nổi bật khi được chọn */
+            box-shadow: 0 0 25px rgba(249, 115, 22, 0.6); /* Thêm hiệu ứng phát sáng */
+        }
+
+        /* Khi thẻ bị khóa (không còn cho phép click) */
+        .flip-card.locked {
+            pointer-events: none; /* Khóa sự kiện click */
+            cursor: default !important;
+            opacity: 0.7; /* Làm mờ để báo hiệu đã bị khóa */
+        }
+        
+        .flip-card:not(.locked) {
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body class="p-4 flex flex-col items-center justify-start min-h-screen">
+
+    <div class="max-w-4xl w-full">
+        <h1 class="text-3xl font-bold text-gray-800 mb-2 text-center">🎰 Minigame Lật Thẻ Chọn Ngày Trực</h1>
+        <p class="text-center text-gray-500 mb-8">Click vào một thẻ bất kỳ để chọn ngày. Thao tác này sẽ khóa tất cả các thẻ còn lại và gửi đăng ký ngay lập tức.</p>
+    </div>
+
+    <!-- KHU VỰC HIỂN THỊ THÔNG TIN USER -->
+    <div class="w-full max-w-lg p-4 mb-6 bg-white border border-gray-200 rounded-xl shadow-lg mx-auto flex items-center space-x-4">
+        <img id="user-avatar" class="w-12 h-12 rounded-full border-2 border-indigo-400" src="https://placehold.co/48x48/6366f1/ffffff?text=TG" alt="Avatar">
+        <div>
+            <span class="text-xs font-semibold text-gray-500">Người dùng Telegram:</span>
+            <p id="user-name" class="text-lg font-bold text-gray-800">Đang tải...</p>
+        </div>
+    </div>
+    <!-- HẾT KHU VỰC USER -->
+
+    <!-- Container cho các thẻ -->
+    <div id="card-container" class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-4 gap-4 sm:gap-6 md:gap-8 justify-center">
+        <!-- Thẻ sẽ được tạo bằng JavaScript tại đây -->
+    </div>
+
+    <!-- Vùng hiển thị kết quả và thông báo -->
+    <div class="mt-10 w-full max-w-lg p-6 bg-white border border-gray-200 rounded-xl shadow-lg mx-auto">
+        <!-- Message box (Dùng để hiển thị trạng thái thành công/lỗi) -->
+        <div id="message-box" class="p-3 text-sm rounded-lg text-blue-700 bg-blue-100" role="alert">
+            Click vào thẻ bạn muốn lật để bắt đầu chọn ngày.
+        </div>
+    </div>
+
+    <script>
+        // Các biến toàn cục
+        let selectedDate = null;
+        let telegramUser = {
+            id: 'mock_id_123',
+            username: 'mock_user',
+            first_name: 'Người dùng'
+        }; // Giả định thông tin user
+
+        const cardContainer = document.getElementById('card-container');
+        const messageBox = document.getElementById('message-box');
+        const userNameElement = document.getElementById('user-name');
+        const userAvatarElement = document.getElementById('user-avatar');
+
+        // Hàm lấy thông tin Telegram từ URL (mô phỏng)
+        function getTelegramInitData() {
+            try {
+                const urlParams = new URLSearchParams(window.location.search);
+                
+                const tgFirstName = urlParams.get('first_name') || 'Người dùng Telegram';
+                const tgUsername = urlParams.get('username');
+                const tgId = urlParams.get('id') || 'N/A';
+                const tgAvatarUrl = urlParams.get('avatar_url'); 
+
+                if (tgId !== 'N/A') {
+                    telegramUser.id = tgId;
+                    telegramUser.first_name = tgFirstName;
+                    telegramUser.username = tgUsername;
+                    
+                    userNameElement.textContent = tgFirstName + (tgUsername ? ` (@${tgUsername})` : '');
+                    if (tgAvatarUrl) {
+                        userAvatarElement.src = tgAvatarUrl;
+                    }
+                } else {
+                    userNameElement.textContent = telegramUser.first_name + ' (Mock)';
+                }
+            } catch (e) {
+                console.error("Lỗi khi đọc dữ liệu Telegram Init:", e);
+                userNameElement.textContent = telegramUser.first_name + ' (Lỗi tải)';
+            }
+        }
+
+        // Hàm tạo 7 ngày liên tiếp
+        function generateDates() {
+            const days = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+            const dates = [];
+            const now = new Date();
+            
+            for (let i = 0; i < 7; i++) {
+                const date = new Date(now);
+                date.setDate(now.getDate() + i);
+                
+                const dayOfWeek = days[date.getDay()];
+                const dateOnly = date.getDate();
+                const monthOnly = date.getMonth() + 1;
+                const year = date.getFullYear();
+                
+                const fullDate = `${year}-${String(monthOnly).padStart(2, '0')}-${String(dateOnly).padStart(2, '0')}`;
+                
+                dates.push({
+                    dayOfWeek,
+                    dateOnly,
+                    monthOnly,
+                    year,
+                    fullDate
+                });
+            }
+            // Trộn ngẫu nhiên thứ tự các ngày
+            for (let i = dates.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [dates[i], dates[j]] = [dates[j], dates[i]];
+            }
+
+            return dates;
+        }
+
+        // Hàm khóa cuối cùng
+        function lockCardsFinal() {
+            document.querySelectorAll('.flip-card').forEach(card => {
+                card.onclick = null; 
+                card.style.cursor = 'default'; 
+            });
+        }
+
+        // Hàm xử lý khi một thẻ được lật/chọn (ONE-SHOT SELECTION & SUBMISSION)
+        function handleCardClick(event) {
+            let cardElement = event.currentTarget;
+
+            // 1. Nếu thẻ đã lật hoặc đã bị khóa thì thoát
+            if (cardElement.classList.contains('flipped') || cardElement.classList.contains('locked')) {
+                return;
+            }
+            
+            // 2. Lật thẻ hiện tại
+            cardElement.classList.add('flipped');
+            const innerCard = cardElement.querySelector('.flip-card-inner');
+            
+            // 3. Khóa TẤT CẢ các thẻ ngay lập tức
+            document.querySelectorAll('.flip-card').forEach(card => {
+                card.classList.add('locked');
+            });
+            
+            // 4. Cập nhật trạng thái chọn
+            const dateValue = cardElement.getAttribute('data-date');
+            const displayValue = cardElement.getAttribute('data-display');
+            selectedDate = dateValue;
+            innerCard.classList.add('selected-card');
+            
+            // 5. THỰC HIỆN SUBMISSION NGAY LẬP TỨC
+            
+            // GÓI DỮ LIỆU ĐỂ GỬI ĐẾN N8N (Mô phỏng)
+            const payload = {
+                action: "register_duty_day",
+                date: selectedDate,
+                user_id: telegramUser.id,
+                user_name: telegramUser.first_name,
+                full_telegram_info: JSON.stringify(telegramUser)
+            };
+
+            // Gửi dữ liệu (Mô phỏng)
+            // Trong môi trường Web App Telegram THỰC TẾ, bạn sẽ dùng:
+            // Telegram.WebApp.sendData(JSON.stringify(payload)); 
+            
+            // Trong môi trường độc lập (mô phỏng):
+            messageBox.classList.remove('text-blue-700', 'bg-blue-100');
+            messageBox.classList.add('text-green-700', 'bg-green-100');
+            messageBox.innerHTML = `✅ **ĐĂNG KÝ THÀNH CÔNG!** Bạn đã chọn ngày <b>${displayValue}</b>.<br>Dữ liệu đã được gửi về bot Telegram để ghi vào Google Sheet.`;
+            
+            // Khóa cuối cùng (loại bỏ handler)
+            lockCardsFinal();
+
+            console.log("Đã đăng ký và gửi dữ liệu:", payload);
+        }
+
+        // Hàm tạo HTML cho thẻ
+        function createCard(dateData) {
+            const card = document.createElement('div');
+            
+            card.className = 'flip-card';
+            card.setAttribute('data-date', dateData.fullDate);
+            card.setAttribute('data-display', `${dateData.dayOfWeek}, ${dateData.dateOnly}/${dateData.monthOnly}/${dateData.year}`);
+            card.onclick = handleCardClick;
+
+            card.innerHTML = `
+                <div class="flip-card-inner">
+                    <div class="flip-card-front">
+                        <span class="text-7xl mb-2 font-bold transform -translate-y-2">?</span>
+                        <span class="text-xl font-semibold">LẬT THẺ</span>
+                        <span class="text-sm opacity-80 mt-1">Chọn ngày may mắn!</span>
+                    </div>
+                    <div class="flip-card-back">
+                        <div class="flex flex-col items-center">
+                            <span class="text-base font-medium text-gray-500">${dateData.dayOfWeek}</span>
+                            <span class="text-6xl font-extrabold text-indigo-600">${dateData.dateOnly}</span>
+                            <span class="text-xl font-semibold text-gray-700 mt-1">${dateData.monthOnly}/${dateData.year}</span>
+                            <span class="text-xs text-green-600 mt-2">Ngày đã chọn!</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            return card;
+        }
+        
+        // Khởi tạo Game
+        window.onload = function() {
+            getTelegramInitData(); // Lấy thông tin user
+            
+            const dates = generateDates(); 
+            dates.forEach((dateData) => {
+                const card = createCard(dateData);
+                cardContainer.appendChild(card);
+            });
+        };
+
+    </script>
+</body>
+</html>
