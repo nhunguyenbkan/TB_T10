@@ -4,44 +4,85 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Minigame Chọn Ngày Trực</title>
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --primary-color: #4f46e5;
-            --secondary-color: #ecf0f1;
             --card-width: 150px;
             --card-height: 200px;
         }
-        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
-
-        .flip-card { background-color: transparent; width: var(--card-width); height: var(--card-height); perspective: 1000px; transition: opacity 0.3s; }
-        .flip-card-inner { position: relative; width: 100%; height: 100%; text-align: center; transition: transform 0.6s; transform-style: preserve-3d; box-shadow: 0 10px 20px rgba(0,0,0,0.1); border-radius: 12px; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .flip-card {
+            background-color: transparent;
+            width: var(--card-width);
+            height: var(--card-height);
+            perspective: 1000px;
+            transition: opacity 0.3s;
+        }
+        .flip-card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            text-align: center;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            border-radius: 12px;
+        }
         .flip-card.flipped .flip-card-inner { transform: rotateY(180deg); }
-
-        .flip-card-front, .flip-card-back { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 12px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-
-        .flip-card-front { background: linear-gradient(135deg, #2d338a 0%, #4f46e5 100%); color: white; border: 4px solid #2d338a; user-select: none; }
-        .flip-card-back { background-color: white; color: #374151; transform: rotateY(180deg); border: 4px solid #06b6d4; display: flex; padding: 1rem; justify-content: center; align-items: center; }
-
+        .flip-card-front, .flip-card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            border-radius: 12px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        .flip-card-front {
+            background: linear-gradient(135deg, #2d338a 0%, #4f46e5 100%);
+            color: white;
+            border: 4px solid #2d338a;
+            user-select: none;
+        }
+        .flip-card-back {
+            background-color: white;
+            color: #374151;
+            transform: rotateY(180deg);
+            border: 4px solid #06b6d4;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .selected-card {
+            border: 4px solid #f97316;
+            box-shadow: 0 0 25px rgba(249,115,22,0.6);
+        }
+        .flip-card.locked {
+            pointer-events: none;
+            cursor: default !important;
+            opacity: 0.7;
+        }
+        .flip-card:not(.locked) { cursor: pointer; }
         @media (max-width: 640px) {
             :root { --card-width: 120px; --card-height: 160px; }
             .grid-cols-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         }
-
-        .selected-card { border: 4px solid #f97316; box-shadow: 0 0 25px rgba(249, 115, 22, 0.6); }
-        .flip-card.locked { pointer-events: none; cursor: default !important; opacity: 0.7; }
-        .flip-card:not(.locked) { cursor: pointer; }
     </style>
 </head>
 <body class="p-4 flex flex-col items-center justify-start min-h-screen">
-
-    <div class="max-w-4xl w-full">
-        <h1 class="text-3xl font-bold text-gray-800 mb-2 text-center">🎰 Minigame Lật Thẻ Chọn Ngày Trực</h1>
-        <p class="text-center text-gray-500 mb-8">Click vào một thẻ bất kỳ để chọn ngày. Thao tác này sẽ khóa tất cả các thẻ còn lại và gửi đăng ký ngay lập tức.</p>
+    <div class="max-w-4xl w-full text-center mb-8">
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">🎰 Minigame Lật Thẻ Chọn Ngày Trực</h1>
+        <p class="text-gray-500">Click vào một thẻ bất kỳ để chọn ngày. Thao tác này sẽ khóa tất cả các thẻ còn lại và gửi đăng ký ngay lập tức.</p>
     </div>
 
+    <!-- User info -->
     <div class="w-full max-w-lg p-4 mb-6 bg-white border border-gray-200 rounded-xl shadow-lg mx-auto flex items-center space-x-4">
         <img id="user-avatar" class="w-12 h-12 rounded-full border-2 border-indigo-400" src="https://placehold.co/48x48/6366f1/ffffff?text=TG" alt="Avatar">
         <div>
@@ -50,8 +91,10 @@
         </div>
     </div>
 
+    <!-- Cards container -->
     <div id="card-container" class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-4 gap-4 sm:gap-6 md:gap-8 justify-center"></div>
 
+    <!-- Message box -->
     <div class="mt-10 w-full max-w-lg p-6 bg-white border border-gray-200 rounded-xl shadow-lg mx-auto">
         <div id="message-box" class="p-3 text-sm rounded-lg text-blue-700 bg-blue-100" role="alert">
             Click vào thẻ bạn muốn lật để bắt đầu chọn ngày.
@@ -59,14 +102,17 @@
     </div>
 
     <script>
-        let selectedDate = null;
-        let telegramUser = { id: 'mock_id_123', username: 'mock_user', first_name: 'Người dùng' };
         const cardContainer = document.getElementById('card-container');
         const messageBox = document.getElementById('message-box');
         const userNameElement = document.getElementById('user-name');
         const userAvatarElement = document.getElementById('user-avatar');
 
-        const webhookUrl = "https://nhunguyenbkan.app.n8n.cloud/webhook-test/941d3ada-5ac9-489b-be4a-c4a13d0d6c49";
+        // Webhook URLs
+        const webhookTestUrl = "https://nhunguyenbkan.app.n8n.cloud/webhook-test/941d3ada-5ac9-489b-be4a-c4a13d0d6c49";
+        const webhookProdUrl = "https://nhunguyenbkan.app.n8n.cloud/webhook/941d3ada-5ac9-489b-be4a-c4a13d0d6c49";
+
+        let selectedDate = null;
+        let telegramUser = { id: 'mock_id_123', username: 'mock_user', first_name: 'Người dùng' };
 
         function getTelegramInitData() {
             try {
@@ -76,26 +122,24 @@
                 const tgId = urlParams.get('id') || 'N/A';
                 const tgAvatarUrl = urlParams.get('avatar_url'); 
 
-                if (tgId !== 'N/A') {
-                    telegramUser.id = tgId;
-                    telegramUser.first_name = tgFirstName;
-                    telegramUser.username = tgUsername;
+                if(tgId !== 'N/A') {
+                    telegramUser = { id: tgId, username: tgUsername, first_name: tgFirstName };
                     userNameElement.textContent = tgFirstName + (tgUsername ? ` (@${tgUsername})` : '');
-                    if (tgAvatarUrl) userAvatarElement.src = tgAvatarUrl;
+                    if(tgAvatarUrl) userAvatarElement.src = tgAvatarUrl;
                 } else {
                     userNameElement.textContent = telegramUser.first_name + ' (Mock)';
                 }
-            } catch (e) {
+            } catch(e) {
                 console.error("Lỗi Telegram Init:", e);
                 userNameElement.textContent = telegramUser.first_name + ' (Lỗi tải)';
             }
         }
 
         function generateDates() {
-            const days = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+            const days = ['Chủ Nhật','Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy'];
             const dates = [];
             const now = new Date();
-            for (let i = 0; i < 7; i++) {
+            for(let i=0;i<7;i++){
                 const date = new Date(now);
                 date.setDate(now.getDate() + i);
                 const dayOfWeek = days[date.getDay()];
@@ -103,26 +147,26 @@
                 const monthOnly = date.getMonth() + 1;
                 const year = date.getFullYear();
                 const fullDate = `${year}-${String(monthOnly).padStart(2,'0')}-${String(dateOnly).padStart(2,'0')}`;
-                dates.push({ dayOfWeek, dateOnly, monthOnly, year, fullDate });
+                dates.push({dayOfWeek,dateOnly,monthOnly,year,fullDate});
             }
-            // Trộn ngẫu nhiên
-            for (let i = dates.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [dates[i], dates[j]] = [dates[j], dates[i]];
+            // shuffle
+            for(let i=dates.length-1;i>0;i--){
+                const j=Math.floor(Math.random()*(i+1));
+                [dates[i],dates[j]]=[dates[j],dates[i]];
             }
             return dates;
         }
 
         function lockCardsFinal() {
-            document.querySelectorAll('.flip-card').forEach(card => {
-                card.onclick = null;
-                card.style.cursor = 'default';
+            document.querySelectorAll('.flip-card').forEach(card=>{
+                card.onclick=null;
+                card.style.cursor='default';
             });
         }
 
         function handleCardClick(event) {
-            let cardElement = event.currentTarget;
-            if (cardElement.classList.contains('flipped') || cardElement.classList.contains('locked')) return;
+            const cardElement = event.currentTarget;
+            if(cardElement.classList.contains('flipped') || cardElement.classList.contains('locked')) return;
 
             cardElement.classList.add('flipped');
             const innerCard = cardElement.querySelector('.flip-card-inner');
@@ -133,6 +177,7 @@
             selectedDate = dateValue;
             innerCard.classList.add('selected-card');
 
+            // POST payload to n8n webhook
             const payload = {
                 action: "register_duty_day",
                 date: selectedDate,
@@ -141,35 +186,38 @@
                 full_telegram_info: JSON.stringify(telegramUser)
             };
 
-            // POST tới n8n webhook
+            // Choose URL (test or production)
+            const webhookUrl = webhookTestUrl; // đổi sang webhookProdUrl khi production
+
             fetch(webhookUrl, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
+                method:'POST',
+                headers: { 'Content-Type':'application/json' },
                 body: JSON.stringify(payload)
             })
-            .then(res => res.json())
-            .then(data => {
+            .then(res => res.text())
+            .then(data=>{
+                console.log('Response from n8n webhook:', data);
                 messageBox.classList.remove('text-blue-700','bg-blue-100');
                 messageBox.classList.add('text-green-700','bg-green-100');
-                messageBox.innerHTML = `✅ Đăng ký thành công! Bạn đã chọn ngày <b>${displayValue}</b>.`;
+                messageBox.innerHTML = `✅ <b>ĐĂNG KÝ THÀNH CÔNG!</b> Bạn đã chọn ngày <b>${displayValue}</b>. Dữ liệu đã được gửi về bot Telegram.`;
             })
-            .catch(err => {
-                console.error("Lỗi gửi dữ liệu:", err);
+            .catch(err=>{
+                console.error('Lỗi gửi webhook:', err);
                 messageBox.classList.remove('text-blue-700','bg-blue-100');
                 messageBox.classList.add('text-red-700','bg-red-100');
-                messageBox.innerHTML = `❌ Lỗi gửi dữ liệu. Vui lòng thử lại.`;
+                messageBox.innerHTML = `❌ Có lỗi xảy ra khi gửi dữ liệu. Vui lòng thử lại.`;
             });
 
             lockCardsFinal();
-            console.log("Đã gửi payload:", payload);
         }
 
-        function createCard(dateData) {
-            const card = document.createElement('div');
-            card.className = 'flip-card';
-            card.setAttribute('data-date', dateData.fullDate);
-            card.setAttribute('data-display', `${dateData.dayOfWeek}, ${dateData.dateOnly}/${dateData.monthOnly}/${dateData.year}`);
+        function createCard(dateData){
+            const card=document.createElement('div');
+            card.className='flip-card';
+            card.setAttribute('data-date',dateData.fullDate);
+            card.setAttribute('data-display',`${dateData.dayOfWeek}, ${dateData.dateOnly}/${dateData.monthOnly}/${dateData.year}`);
             card.onclick = handleCardClick;
+
             card.innerHTML = `
                 <div class="flip-card-inner">
                     <div class="flip-card-front">
@@ -190,11 +238,15 @@
             return card;
         }
 
-        window.onload = function() {
+        window.onload = function(){
             getTelegramInitData();
             const dates = generateDates();
-            dates.forEach(dateData => cardContainer.appendChild(createCard(dateData)));
-        };
+            dates.forEach(dateData=>{
+                const card=createCard(dateData);
+                cardContainer.appendChild(card);
+            });
+        }
     </script>
 </body>
 </html>
+
