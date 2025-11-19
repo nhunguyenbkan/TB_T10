@@ -135,61 +135,72 @@
         const resultIndexElement = document.getElementById('result-index');
         const resultDateElement = document.getElementById('result-date');
 
-        // WEBHOOK URL CỦA BẠN - ĐÃ ĐƯỢC CẬP NHẬT
+        // WEBHOOK URL CỦA BẠN
         const webhookUrl = "https://nhunguyenbkan.app.n8n.cloud/webhook-test/34276554-fab1-466c-afd7-bea2bf7a38f0";
 
         let selectedIndex = null;
         let telegramUser = null;
         let weekDates = {};
+        let cardsInitialized = false;
 
-        // Khởi tạo Telegram Web App
+        // Khởi tạo Telegram Web App - SỬA LẠI
         function initTelegramWebApp() {
-            if (window.Telegram && window.Telegram.WebApp) {
-                const tg = window.Telegram.WebApp;
-                
-                // Mở rộng web app để chiếm toàn bộ màn hình
-                tg.expand();
-                
-                // Lấy thông tin user từ Telegram
-                const user = tg.initDataUnsafe.user;
-                
-                if (user) {
-                    telegramUser = {
-                        id: user.id,
-                        first_name: user.first_name,
-                        last_name: user.last_name || '',
-                        username: user.username || '',
-                        language_code: user.language_code || 'vi',
-                        is_premium: user.is_premium || false
-                    };
+            return new Promise((resolve) => {
+                if (window.Telegram && window.Telegram.WebApp) {
+                    const tg = window.Telegram.WebApp;
                     
-                    // Hiển thị thông tin user
-                    userNameElement.textContent = `${telegramUser.first_name} ${telegramUser.last_name}`.trim();
-                    if (telegramUser.username) {
-                        userNameElement.textContent += ` (@${telegramUser.username})`;
-                    }
+                    // Đợi Telegram Web App sẵn sàng
+                    tg.ready();
                     
-                    userIdElement.textContent = `ID: ${telegramUser.id}`;
-                    
-                    // Cố gắng lấy avatar (nếu có)
-                    if (user.photo_url) {
-                        userAvatarElement.src = user.photo_url;
-                    } else {
-                        // Tạo avatar mặc định dựa trên tên
-                        userAvatarElement.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(telegramUser.first_name)}&background=6366f1&color=fff`;
-                    }
-                    
-                    console.log('Telegram User:', telegramUser);
+                    // Thêm timeout để đảm bảo
+                    setTimeout(() => {
+                        // Lấy thông tin user từ Telegram
+                        const user = tg.initDataUnsafe.user;
+                        
+                        if (user) {
+                            telegramUser = {
+                                id: user.id,
+                                first_name: user.first_name,
+                                last_name: user.last_name || '',
+                                username: user.username || '',
+                                language_code: user.language_code || 'vi',
+                                is_premium: user.is_premium || false
+                            };
+                            
+                            // Hiển thị thông tin user
+                            updateUserInfo();
+                            console.log('Telegram User loaded:', telegramUser);
+                        } else {
+                            // Fallback nếu không lấy được thông tin user
+                            showFallbackUserInfo();
+                        }
+                        
+                        // Mở rộng web app
+                        tg.expand();
+                        resolve(true);
+                    }, 100);
                 } else {
-                    // Fallback nếu không lấy được thông tin user
+                    // Fallback cho môi trường không phải Telegram
                     showFallbackUserInfo();
+                    resolve(true);
                 }
-                
-                // Đánh dấu web app đã sẵn sàng
-                tg.ready();
+            });
+        }
+
+        function updateUserInfo() {
+            userNameElement.textContent = `${telegramUser.first_name} ${telegramUser.last_name}`.trim();
+            if (telegramUser.username) {
+                userNameElement.textContent += ` (@${telegramUser.username})`;
+            }
+            
+            userIdElement.textContent = `ID: ${telegramUser.id}`;
+            
+            // Cố gắng lấy avatar (nếu có)
+            if (window.Telegram?.WebApp?.initDataUnsafe?.user?.photo_url) {
+                userAvatarElement.src = window.Telegram.WebApp.initDataUnsafe.user.photo_url;
             } else {
-                // Fallback cho môi trường không phải Telegram
-                showFallbackUserInfo();
+                // Tạo avatar mặc định dựa trên tên
+                userAvatarElement.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(telegramUser.first_name)}&background=6366f1&color=fff`;
             }
         }
 
@@ -203,9 +214,7 @@
                 is_premium: false
             };
             
-            userNameElement.textContent = 'Người dùng Telegram';
-            userIdElement.textContent = 'ID: Không xác định';
-            userAvatarElement.src = 'https://placehold.co/48x48/6366f1/ffffff?text=TG';
+            updateUserInfo();
         }
 
         // Lấy trigger date từ URL parameter và tính toán tuần
@@ -285,6 +294,25 @@
             }
             
             return cards;
+        }
+
+        function initializeCards() {
+            if (cardsInitialized) return;
+            
+            // Tính toán và hiển thị tuần
+            const triggerDate = getTriggerDateFromURL();
+            weekDates = calculateWeekFromTriggerDate(triggerDate);
+            weekRangeElement.textContent = weekDates.week_range;
+            
+            // Tạo cards
+            const indexCards = generateIndexCards();
+            indexCards.forEach(cardData => {
+                const card = createCard(cardData);
+                cardContainer.appendChild(card);
+            });
+            
+            cardsInitialized = true;
+            console.log('Cards initialized');
         }
 
         function lockCardsFinal() {
@@ -398,22 +426,27 @@
             return card;
         }
 
-        window.onload = function() {
-            // Khởi tạo Telegram Web App trước
-            initTelegramWebApp();
-            
-            // Tính toán và hiển thị tuần
-            const triggerDate = getTriggerDateFromURL();
-            weekDates = calculateWeekFromTriggerDate(triggerDate);
-            weekRangeElement.textContent = weekDates.week_range;
-            
-            // Tạo cards
-            const indexCards = generateIndexCards();
-            indexCards.forEach(cardData => {
-                const card = createCard(cardData);
-                cardContainer.appendChild(card);
-            });
+        // Khởi tạo ứng dụng
+        async function initializeApp() {
+            try {
+                // 1. Khởi tạo Telegram Web App trước
+                await initTelegramWebApp();
+                
+                // 2. Khởi tạo cards sau khi Telegram đã sẵn sàng
+                initializeCards();
+                
+                console.log('App initialized successfully');
+            } catch (error) {
+                console.error('Error initializing app:', error);
+                // Fallback: vẫn khởi tạo cards nếu có lỗi
+                initializeCards();
+            }
         }
+
+        // Bắt đầu khởi tạo khi DOM ready
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeApp();
+        });
     </script>
 </body>
 </html>
