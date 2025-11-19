@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Minigame Chọn Ngày Trực</title>
+    <title>Bốc Thăm Tuần - 7 Phiếu Chung</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -78,26 +79,48 @@
 </head>
 <body class="p-4 flex flex-col items-center justify-start min-h-screen">
     <div class="max-w-4xl w-full text-center mb-8">
-        <h1 class="text-3xl font-bold text-gray-800 mb-2">🎰 Minigame Lật Thẻ Chọn Ngày Trực</h1>
-        <p class="text-gray-500">Click vào một thẻ bất kỳ để chọn ngày. Thao tác này sẽ khóa tất cả các thẻ còn lại và gửi đăng ký ngay lập tức.</p>
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">🎯 Bốc Thăm Tuần - 7 Phiếu Chung</h1>
+        <p class="text-gray-500">Click vào một thẻ bất kỳ để chọn Index. Thao tác này sẽ khóa tất cả các thẻ còn lại và gửi kết quả ngay lập tức.</p>
     </div>
 
     <!-- User info -->
     <div class="w-full max-w-lg p-4 mb-6 bg-white border border-gray-200 rounded-xl shadow-lg mx-auto flex items-center space-x-4">
-        <img id="user-avatar" class="w-12 h-12 rounded-full border-2 border-indigo-400" src="https://placehold.co/48x48/6366f1/ffffff?text=TG" alt="Avatar">
+        <img id="user-avatar" class="w-12 h-12 rounded-full border-2 border-indigo-400" src="" alt="Avatar">
         <div>
             <span class="text-xs font-semibold text-gray-500">Người dùng Telegram:</span>
             <p id="user-name" class="text-lg font-bold text-gray-800">Đang tải...</p>
+            <p id="user-id" class="text-xs text-gray-500">ID: Đang tải...</p>
         </div>
+    </div>
+
+    <!-- Week Range Display -->
+    <div class="w-full max-w-lg p-4 mb-6 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl shadow-lg mx-auto text-center">
+        <div class="text-sm font-semibold opacity-80">TUẦN LÀM VIỆC</div>
+        <div id="week-range" class="text-xl font-bold">Đang tải...</div>
     </div>
 
     <!-- Cards container -->
     <div id="card-container" class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-4 gap-4 sm:gap-6 md:gap-8 justify-center"></div>
 
+    <!-- Result Display -->
+    <div id="result-section" class="mt-6 w-full max-w-lg p-6 bg-white border border-gray-200 rounded-xl shadow-lg mx-auto hidden">
+        <h3 class="text-lg font-bold text-gray-800 mb-4 text-center">🎊 KẾT QUẢ BỐC THĂM</h3>
+        <div class="space-y-3">
+            <div class="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+                <span class="font-semibold text-gray-700">🎯 Index đã chọn:</span>
+                <span id="result-index" class="text-xl font-bold text-blue-600">-</span>
+            </div>
+            <div class="flex justify-between items-center p-3 bg-green-50 rounded-lg">
+                <span class="font-semibold text-gray-700">📅 Ngày tương ứng:</span>
+                <span id="result-date" class="text-lg font-bold text-green-600">-</span>
+            </div>
+        </div>
+    </div>
+
     <!-- Message box -->
-    <div class="mt-10 w-full max-w-lg p-6 bg-white border border-gray-200 rounded-xl shadow-lg mx-auto">
+    <div class="mt-6 w-full max-w-lg p-6 bg-white border border-gray-200 rounded-xl shadow-lg mx-auto">
         <div id="message-box" class="p-3 text-sm rounded-lg text-blue-700 bg-blue-100" role="alert">
-            Click vào thẻ bạn muốn lật để bắt đầu chọn ngày.
+            Click vào một thẻ bất kỳ để bốc thăm Index.
         </div>
     </div>
 
@@ -106,61 +129,168 @@
         const messageBox = document.getElementById('message-box');
         const userNameElement = document.getElementById('user-name');
         const userAvatarElement = document.getElementById('user-avatar');
+        const userIdElement = document.getElementById('user-id');
+        const weekRangeElement = document.getElementById('week-range');
+        const resultSection = document.getElementById('result-section');
+        const resultIndexElement = document.getElementById('result-index');
+        const resultDateElement = document.getElementById('result-date');
 
-        // Webhook URLs
-        const webhookTestUrl = "https://nhunguyenbkan.app.n8n.cloud/webhook-test/941d3ada-5ac9-489b-be4a-c4a13d0d6c49";
-        const webhookProdUrl = "https://nhunguyenbkan.app.n8n.cloud/webhook/941d3ada-5ac9-489b-be4a-c4a13d0d6c49";
+        // WEBHOOK URL CỦA BẠN - ĐÃ ĐƯỢC CẬP NHẬT
+        const webhookUrl = "https://nhunguyenbkan.app.n8n.cloud/webhook-test/34276554-fab1-466c-afd7-bea2bf7a38f0";
 
-        let selectedDate = null;
-        let telegramUser = { id: 'mock_id_123', username: 'mock_user', first_name: 'Người dùng' };
+        let selectedIndex = null;
+        let telegramUser = null;
+        let weekDates = {};
 
-        function getTelegramInitData() {
-            try {
-                const urlParams = new URLSearchParams(window.location.search);
-                const tgFirstName = urlParams.get('first_name') || 'Người dùng Telegram';
-                const tgUsername = urlParams.get('username');
-                const tgId = urlParams.get('id') || 'N/A';
-                const tgAvatarUrl = urlParams.get('avatar_url'); 
-
-                if(tgId !== 'N/A') {
-                    telegramUser = { id: tgId, username: tgUsername, first_name: tgFirstName };
-                    userNameElement.textContent = tgFirstName + (tgUsername ? ` (@${tgUsername})` : '');
-                    if(tgAvatarUrl) userAvatarElement.src = tgAvatarUrl;
+        // Khởi tạo Telegram Web App
+        function initTelegramWebApp() {
+            if (window.Telegram && window.Telegram.WebApp) {
+                const tg = window.Telegram.WebApp;
+                
+                // Mở rộng web app để chiếm toàn bộ màn hình
+                tg.expand();
+                
+                // Lấy thông tin user từ Telegram
+                const user = tg.initDataUnsafe.user;
+                
+                if (user) {
+                    telegramUser = {
+                        id: user.id,
+                        first_name: user.first_name,
+                        last_name: user.last_name || '',
+                        username: user.username || '',
+                        language_code: user.language_code || 'vi',
+                        is_premium: user.is_premium || false
+                    };
+                    
+                    // Hiển thị thông tin user
+                    userNameElement.textContent = `${telegramUser.first_name} ${telegramUser.last_name}`.trim();
+                    if (telegramUser.username) {
+                        userNameElement.textContent += ` (@${telegramUser.username})`;
+                    }
+                    
+                    userIdElement.textContent = `ID: ${telegramUser.id}`;
+                    
+                    // Cố gắng lấy avatar (nếu có)
+                    if (user.photo_url) {
+                        userAvatarElement.src = user.photo_url;
+                    } else {
+                        // Tạo avatar mặc định dựa trên tên
+                        userAvatarElement.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(telegramUser.first_name)}&background=6366f1&color=fff`;
+                    }
+                    
+                    console.log('Telegram User:', telegramUser);
                 } else {
-                    userNameElement.textContent = telegramUser.first_name + ' (Mock)';
+                    // Fallback nếu không lấy được thông tin user
+                    showFallbackUserInfo();
                 }
-            } catch(e) {
-                console.error("Lỗi Telegram Init:", e);
-                userNameElement.textContent = telegramUser.first_name + ' (Lỗi tải)';
+                
+                // Đánh dấu web app đã sẵn sàng
+                tg.ready();
+            } else {
+                // Fallback cho môi trường không phải Telegram
+                showFallbackUserInfo();
             }
         }
 
-        function generateDates() {
-            const days = ['Chủ Nhật','Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy'];
-            const dates = [];
-            const now = new Date();
-            for(let i=0;i<7;i++){
-                const date = new Date(now);
-                date.setDate(now.getDate() + i);
-                const dayOfWeek = days[date.getDay()];
-                const dateOnly = date.getDate();
-                const monthOnly = date.getMonth() + 1;
-                const year = date.getFullYear();
-                const fullDate = `${year}-${String(monthOnly).padStart(2,'0')}-${String(dateOnly).padStart(2,'0')}`;
-                dates.push({dayOfWeek,dateOnly,monthOnly,year,fullDate});
+        function showFallbackUserInfo() {
+            telegramUser = {
+                id: 'unknown',
+                first_name: 'Người dùng Telegram',
+                last_name: '',
+                username: '',
+                language_code: 'vi',
+                is_premium: false
+            };
+            
+            userNameElement.textContent = 'Người dùng Telegram';
+            userIdElement.textContent = 'ID: Không xác định';
+            userAvatarElement.src = 'https://placehold.co/48x48/6366f1/ffffff?text=TG';
+        }
+
+        // Lấy trigger date từ URL parameter và tính toán tuần
+        function getTriggerDateFromURL() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const triggerDateISO = urlParams.get('trigger_date');
+            
+            if (triggerDateISO) {
+                return new Date(triggerDateISO);
+            } else {
+                // Fallback: dùng ngày hiện tại và tìm thứ 6 gần nhất
+                const now = new Date();
+                const dayOfWeek = now.getDay();
+                const daysToFriday = dayOfWeek <= 5 ? 5 - dayOfWeek : 5 - dayOfWeek + 7;
+                const friday = new Date(now);
+                friday.setDate(now.getDate() + daysToFriday);
+                return friday;
             }
-            // shuffle
-            for(let i=dates.length-1;i>0;i--){
-                const j=Math.floor(Math.random()*(i+1));
-                [dates[i],dates[j]]=[dates[j],dates[i]];
+        }
+
+        function calculateWeekFromTriggerDate(triggerDate) {
+            const friday = new Date(triggerDate);
+            
+            const monday = new Date(friday);
+            monday.setDate(friday.getDate() - 4);
+            
+            const tuesday = new Date(friday);
+            tuesday.setDate(friday.getDate() - 3);
+            
+            const wednesday = new Date(friday);
+            wednesday.setDate(friday.getDate() - 2);
+            
+            const thursday = new Date(friday);
+            thursday.setDate(friday.getDate() - 1);
+            
+            const saturday = new Date(friday);
+            saturday.setDate(friday.getDate() + 1);
+            
+            const sunday = new Date(friday);
+            sunday.setDate(friday.getDate() + 2);
+            
+            return {
+                monday: formatDate(monday),
+                tuesday: formatDate(tuesday),
+                wednesday: formatDate(wednesday),
+                thursday: formatDate(thursday),
+                friday: formatDate(friday),
+                saturday: formatDate(saturday),
+                sunday: formatDate(sunday),
+                week_range: `${formatDate(monday)} - ${formatDate(sunday)}`
+            };
+        }
+
+        function formatDate(date) {
+            return date.toLocaleDateString('vi-VN', {
+                day: '2-digit',
+                month: '2-digit'
+            });
+        }
+
+        function generateIndexCards() {
+            const days = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ Nhật'];
+            const cards = [];
+            
+            for (let i = 1; i <= 7; i++) {
+                cards.push({
+                    index: i,
+                    day: days[i-1],
+                    date: Object.values(weekDates)[i-1] || ''
+                });
             }
-            return dates;
+            
+            // Xáo trộn thứ tự
+            for(let i = cards.length - 1; i > 0; i--){
+                const j = Math.floor(Math.random() * (i + 1));
+                [cards[i], cards[j]] = [cards[j], cards[i]];
+            }
+            
+            return cards;
         }
 
         function lockCardsFinal() {
-            document.querySelectorAll('.flip-card').forEach(card=>{
-                card.onclick=null;
-                card.style.cursor='default';
+            document.querySelectorAll('.flip-card').forEach(card => {
+                card.onclick = null;
+                card.style.cursor = 'default';
             });
         }
 
@@ -172,50 +302,80 @@
             const innerCard = cardElement.querySelector('.flip-card-inner');
             document.querySelectorAll('.flip-card').forEach(card => card.classList.add('locked'));
 
-            const dateValue = cardElement.getAttribute('data-date');
-            const displayValue = cardElement.getAttribute('data-display');
-            selectedDate = dateValue;
+            selectedIndex = parseInt(cardElement.getAttribute('data-index'));
+            const selectedDay = cardElement.getAttribute('data-day');
+            const selectedDate = cardElement.getAttribute('data-date');
+            
             innerCard.classList.add('selected-card');
 
-            // POST payload to n8n webhook
+            // Hiển thị kết quả
+            resultIndexElement.textContent = selectedIndex;
+            resultDateElement.textContent = `${selectedDay} (${selectedDate})`;
+            resultSection.classList.remove('hidden');
+
+            // Gửi kết quả đến n8n webhook
             const payload = {
-                action: "register_duty_day",
-                date: selectedDate,
+                action: "lottery_selection",
+                selected_index: selectedIndex,
+                selected_day: selectedDay,
+                selected_date: selectedDate,
+                week_range: weekDates.week_range,
                 user_id: telegramUser.id,
-                user_name: telegramUser.first_name,
-                full_telegram_info: JSON.stringify(telegramUser)
+                user_first_name: telegramUser.first_name,
+                user_last_name: telegramUser.last_name,
+                user_username: telegramUser.username,
+                user_language: telegramUser.language_code,
+                user_is_premium: telegramUser.is_premium,
+                trigger_date: getTriggerDateFromURL().toISOString(),
+                timestamp: new Date().toISOString(),
+                source: 'telegram_web_app'
             };
 
-            // Choose URL (test or production)
-            const webhookUrl = webhookTestUrl; // đổi sang webhookProdUrl khi production
+            // Hiển thị loading
+            messageBox.classList.remove('text-blue-700', 'bg-blue-100');
+            messageBox.classList.add('text-yellow-700', 'bg-yellow-100');
+            messageBox.innerHTML = `⏳ <b>ĐANG GỬI KẾT QUẢ...</b> Vui lòng chờ.`;
 
             fetch(webhookUrl, {
-                method:'POST',
-                headers: { 'Content-Type':'application/json' },
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             })
-            .then(res => res.text())
-            .then(data=>{
-                console.log('Response from n8n webhook:', data);
-                messageBox.classList.remove('text-blue-700','bg-blue-100');
-                messageBox.classList.add('text-green-700','bg-green-100');
-                messageBox.innerHTML = `✅ <b>ĐĂNG KÝ THÀNH CÔNG!</b> Bạn đã chọn ngày <b>${displayValue}</b>. Dữ liệu đã được gửi về bot Telegram.`;
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error(`HTTP error! status: ${res.status}`);
+                }
+                return res.text();
             })
-            .catch(err=>{
+            .then(data => {
+                console.log('Response from n8n webhook:', data);
+                messageBox.classList.remove('text-yellow-700', 'bg-yellow-100');
+                messageBox.classList.add('text-green-700', 'bg-green-100');
+                messageBox.innerHTML = `✅ <b>BỐC THĂM THÀNH CÔNG!</b> Index <b>${selectedIndex}</b> - ${selectedDay} đã được ghi nhận.`;
+                
+                // Tự động đóng web app sau 3 giây
+                setTimeout(() => {
+                    if (window.Telegram && window.Telegram.WebApp) {
+                        window.Telegram.WebApp.close();
+                    }
+                }, 3000);
+            })
+            .catch(err => {
                 console.error('Lỗi gửi webhook:', err);
-                messageBox.classList.remove('text-blue-700','bg-blue-100');
-                messageBox.classList.add('text-red-700','bg-red-100');
+                messageBox.classList.remove('text-yellow-700', 'bg-yellow-100');
+                messageBox.classList.add('text-red-700', 'bg-red-100');
                 messageBox.innerHTML = `❌ Có lỗi xảy ra khi gửi dữ liệu. Vui lòng thử lại.`;
             });
 
             lockCardsFinal();
         }
 
-        function createCard(dateData){
-            const card=document.createElement('div');
-            card.className='flip-card';
-            card.setAttribute('data-date',dateData.fullDate);
-            card.setAttribute('data-display',`${dateData.dayOfWeek}, ${dateData.dateOnly}/${dateData.monthOnly}/${dateData.year}`);
+        function createCard(cardData) {
+            const card = document.createElement('div');
+            card.className = 'flip-card';
+            card.setAttribute('data-index', cardData.index);
+            card.setAttribute('data-day', cardData.day);
+            card.setAttribute('data-date', cardData.date);
             card.onclick = handleCardClick;
 
             card.innerHTML = `
@@ -223,14 +383,14 @@
                     <div class="flip-card-front">
                         <span class="text-7xl mb-2 font-bold transform -translate-y-2">?</span>
                         <span class="text-xl font-semibold">LẬT THẺ</span>
-                        <span class="text-sm opacity-80 mt-1">Chọn ngày may mắn!</span>
+                        <span class="text-sm opacity-80 mt-1">Chọn index may mắn!</span>
                     </div>
                     <div class="flip-card-back">
                         <div class="flex flex-col items-center">
-                            <span class="text-base font-medium text-gray-500">${dateData.dayOfWeek}</span>
-                            <span class="text-6xl font-extrabold text-indigo-600">${dateData.dateOnly}</span>
-                            <span class="text-xl font-semibold text-gray-700 mt-1">${dateData.monthOnly}/${dateData.year}</span>
-                            <span class="text-xs text-green-600 mt-2">Ngày đã chọn!</span>
+                            <span class="text-base font-medium text-gray-500">${cardData.day}</span>
+                            <span class="text-6xl font-extrabold text-indigo-600">${cardData.index}</span>
+                            <span class="text-lg font-semibold text-gray-700 mt-1">${cardData.date}</span>
+                            <span class="text-xs text-green-600 mt-2">Index đã chọn!</span>
                         </div>
                     </div>
                 </div>
@@ -238,15 +398,22 @@
             return card;
         }
 
-        window.onload = function(){
-            getTelegramInitData();
-            const dates = generateDates();
-            dates.forEach(dateData=>{
-                const card=createCard(dateData);
+        window.onload = function() {
+            // Khởi tạo Telegram Web App trước
+            initTelegramWebApp();
+            
+            // Tính toán và hiển thị tuần
+            const triggerDate = getTriggerDateFromURL();
+            weekDates = calculateWeekFromTriggerDate(triggerDate);
+            weekRangeElement.textContent = weekDates.week_range;
+            
+            // Tạo cards
+            const indexCards = generateIndexCards();
+            indexCards.forEach(cardData => {
+                const card = createCard(cardData);
                 cardContainer.appendChild(card);
             });
         }
     </script>
 </body>
 </html>
-
