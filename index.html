@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bốc thăm lịch trực theo tuần</title>
+    <title>Bốc Thăm Tuần - 7 Phiếu Chung</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -19,7 +19,7 @@
     </script>
     
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght=400;600;700;800;900&display=swap" rel="stylesheet">
     
     <style>
         :root {
@@ -31,13 +31,12 @@
             background-color: #f3f4f6;
         }
         
-        /* Cải tiến: Responsive Grid cho Thẻ (Card Grid) */
+        /* Responsive Grid cho Thẻ (Card Grid) */
         .card-grid {
             display: grid;
-            /* Mặc định 2 cột trên điện thoại */
             grid-template-columns: repeat(2, var(--card-width)); 
             gap: 16px; 
-            justify-content: center; /* Căn giữa nhóm thẻ */
+            justify-content: center; 
             max-width: 100%;
         }
         
@@ -67,10 +66,10 @@
             perspective: 1000px;
             transition: opacity 0.3s, transform 0.3s;
             cursor: pointer;
-            box-sizing: border-box; /* Đảm bảo border không làm tăng kích thước */
+            box-sizing: border-box;
         }
         .flip-card:not(.locked):hover {
-            transform: scale(1.05); /* Hiệu ứng hover nhẹ */
+            transform: scale(1.05); 
         }
         .flip-card-inner {
             position: relative;
@@ -93,10 +92,10 @@
             justify-content: center;
             align-items: center;
             flex-direction: column;
-            padding: 8px; /* Thêm padding nhẹ */
+            padding: 8px; 
         }
         .flip-card-front {
-            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); /* Blue đậm hơn */
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); 
             color: white;
             border: 4px solid #1e3a8a;
             user-select: none;
@@ -108,7 +107,7 @@
             border: 4px solid #0ea5e9;
         }
         .selected-card {
-            border-color: #f97316 !important; /* Màu cam nổi bật */
+            border-color: #f97316 !important; 
             box-shadow: 0 0 30px rgba(249,115,22,0.8);
         }
         .flip-card.locked {
@@ -188,50 +187,53 @@
             });
         }
         
-        // === FUNCTION TÍNH TOÁN TUẦN LÀM VIỆC ===
+        // === FUNCTION TÍNH TOÁN NGÀY MỐC ===
         function getTriggerDateFromURL() {
             const urlParams = new URLSearchParams(window.location.search);
             const triggerDateISO = urlParams.get('trigger_date');
             
             if (triggerDateISO) {
-                // Đảm bảo parse date chính xác
                 const date = new Date(triggerDateISO);
                 return isNaN(date.getTime()) ? new Date() : date;
             } else {
-                // Fallback: Lấy ngày hiện tại
                 return new Date();
             }
         }
 
+        // === FUNCTION TÍNH TOÁN TUẦN LÀM VIỆC (Thứ Hai Tuần Kế Tiếp) ===
         function calculateWeekFromTriggerDate(triggerDate) {
             const daysOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
             const week = {};
             
-            // Sao chép triggerDate để tránh thay đổi bản gốc
-            const currentDay = new Date(triggerDate);
+            // Sao chép ngày mốc
+            const currentDay = new Date(triggerDate); 
             
-            // Đặt ngày về đầu tuần (Thứ 2)
-            // Lấy thứ trong tuần (0=CN, 1=T2, ..., 6=T7)
-            let dayIndex = currentDay.getDay(); 
+            // 1. Tìm ngày Thứ Hai của tuần HIỆN TẠI
+            let dayIndex = currentDay.getDay(); // 0=CN, 1=T2, ..., 6=T7
             // Nếu là CN (0), lùi 6 ngày. Nếu là T2 (1), lùi 0 ngày.
             const daysToMonday = (dayIndex === 0) ? 6 : dayIndex - 1;
-            currentDay.setDate(currentDay.getDate() - daysToMonday);
+            currentDay.setDate(currentDay.getDate() - daysToMonday); 
 
+            // 2. Chuyển sang Thứ Hai của tuần KẾ TIẾP
+            currentDay.setDate(currentDay.getDate() + 7);
+            
+            // 3. Lặp qua 7 ngày, bắt đầu từ Thứ Hai của tuần kế tiếp
             for (let i = 0; i < 7; i++) {
-                const dayKey = daysOfWeek[(i + 1) % 7]; // Bắt đầu từ Monday
-                week[dayKey] = formatDate(currentDay);
-                currentDay.setDate(currentDay.getDate() + 1);
+                // Key được map: [1] = monday, [2] = tuesday, ...
+                const dayKey = daysOfWeek[(i + 1) % 7]; 
+                week[dayKey] = formatDate(currentDay); 
+                currentDay.setDate(currentDay.getDate() + 1); // Tăng ngày lên 1
             }
             
-            // Loại bỏ 'sunday' và sắp xếp lại để đảm bảo thứ tự T2 -> CN
+            // Sắp xếp lại thứ tự ngày tháng (T2 -> CN)
             const orderedDates = [
                 week.monday, week.tuesday, week.wednesday, week.thursday, 
                 week.friday, week.saturday, week.sunday
             ];
             
             return {
-                dates: orderedDates,
-                week_range: `${orderedDates[0]} - ${orderedDates[6]}` // Thứ 2 - Chủ Nhật
+                dates: orderedDates, 
+                week_range: `${orderedDates[0]} - ${orderedDates[6]}`
             };
         }
 
@@ -240,7 +242,7 @@
             const days = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ Nhật'];
             const cards = [];
             
-            // weekDates.dates là mảng ngày đã được sắp xếp
+            // Tạo 7 thẻ, gán ngày tháng đã tính toán theo thứ tự T2 -> CN
             for (let i = 0; i < 7; i++) {
                 cards.push({
                     index: i + 1,
@@ -249,7 +251,7 @@
                 });
             }
             
-            // Xáo trộn thứ tự
+            // Xáo trộn thứ tự các thẻ
             for(let i = cards.length - 1; i > 0; i--){
                 const j = Math.floor(Math.random() * (i + 1));
                 [cards[i], cards[j]] = [cards[j], cards[i]];
@@ -258,6 +260,7 @@
             return cards;
         }
 
+        // === FUNCTION TẠO CẤU TRÚC THẺ HTML ===
         function createCard(cardData) {
             const card = document.createElement('div');
             card.className = 'flip-card';
@@ -285,7 +288,7 @@
             `;
             return card;
         }
-
+        
         // === FUNCTION XỬ LÝ TELEGRAM WEB APP VÀ USER INFO ===
         function initTelegramWebApp() {
             return new Promise((resolve) => {
@@ -293,7 +296,6 @@
                     const tg = window.Telegram.WebApp;
                     tg.ready();
                     
-                    // Thêm timeout để đảm bảo dữ liệu được load
                     setTimeout(() => {
                         const user = tg.initDataUnsafe.user;
                         
@@ -316,7 +318,7 @@
                     }, 100);
                 } else {
                     showFallbackUserInfo();
-                    resolve(false); // Trả về false nếu không phải TWA
+                    resolve(false); 
                 }
             });
         }
@@ -326,7 +328,6 @@
             userNameElement.textContent = fullName + (telegramUser.username ? ` (@${telegramUser.username})` : '');
             userIdElement.textContent = `ID: ${telegramUser.id}`;
             
-            // Avatar fallback
             const avatarUrl = window.Telegram?.WebApp?.initDataUnsafe?.user?.photo_url 
                               || `https://ui-avatars.com/api/?name=${encodeURIComponent(telegramUser.first_name || 'U')}&background=6366f1&color=fff`;
             userAvatarElement.src = avatarUrl;
@@ -350,6 +351,7 @@
 
             cardElement.classList.add('flipped');
             const innerCard = cardElement.querySelector('.flip-card-inner');
+            // Khóa tất cả các thẻ còn lại
             document.querySelectorAll('.flip-card').forEach(card => card.classList.add('locked'));
 
             selectedIndex = parseInt(cardElement.getAttribute('data-index'));
@@ -364,12 +366,13 @@
             resultSection.classList.remove('hidden');
 
             // Hiển thị loading
-            messageBox.classList.remove('text-blue-700', 'bg-blue-100');
+            messageBox.classList.remove('text-blue-700', 'bg-blue-100', 'text-green-700', 'bg-green-100');
             messageBox.classList.add('text-yellow-700', 'bg-yellow-100');
             messageBox.innerHTML = `⏳ <b>ĐANG GỬI KẾT QUẢ...</b> Vui lòng chờ.`;
 
-            // Payload và Webhook URL (ĐÃ SỬA THÀNH URL CỦA BẠN)
-            const webhookUrl = "https://nhunguyenbkan.app.n8n.cloud/webhook/34276554-fab1-466c-afd7-bea2bf7a38f0"; // Đã đổi 'webhook-test' thành 'webhook'
+            // URL Webhook PRODUCTION của bạn (ĐÃ SỬA)
+            const webhookUrl = "https://nhunguyenbkan.app.n8n.cloud/webhook/34276554-fab1-466c-afd7-bea2bf7a38f0"; 
+            
             const payload = {
                 action: "lottery_selection",
                 selected_index: selectedIndex,
@@ -382,7 +385,7 @@
                 user_username: telegramUser.username,
                 trigger_date: getTriggerDateFromURL().toISOString(),
                 timestamp: new Date().toISOString(),
-                source: 'telegram_web_app_v2'
+                source: 'telegram_web_app_v3_next_week_fix'
             };
 
             fetch(webhookUrl, {
@@ -392,18 +395,18 @@
             })
             .then(res => {
                 if (!res.ok) {
-                    throw new Error(`Lỗi HTTP! Status: ${res.status}`);
+                    // Nếu n8n trả về lỗi HTTP (ví dụ: 400, 500)
+                    throw new Error(`HTTP error! Status: ${res.status}. Vui lòng kiểm tra N8N.`);
                 }
-                // Nếu n8n trả về phản hồi thành công, ta tiếp tục
                 return res.text();
             })
             .then(data => {
                 console.log('Response from n8n webhook:', data);
-                messageBox.classList.remove('text-yellow-700', 'bg-yellow-100');
+                messageBox.classList.remove('text-yellow-700', 'bg-yellow-100', 'text-red-700', 'bg-red-100');
                 messageBox.classList.add('text-green-700', 'bg-green-100');
                 messageBox.innerHTML = `✅ <b>BỐC THĂM THÀNH CÔNG!</b> Index <b>${selectedIndex}</b> - ${selectedDay} đã được ghi nhận.`;
                 
-                // Tự động đóng web app sau 3 giây (chỉ trong môi trường Telegram)
+                // Tự động đóng web app sau 3 giây
                 setTimeout(() => {
                     if (window.Telegram && window.Telegram.WebApp) {
                         window.Telegram.WebApp.close();
@@ -411,8 +414,9 @@
                 }, 3000);
             })
             .catch(err => {
+                // Bắt lỗi mạng (Failed to fetch) hoặc lỗi HTTP từ server
                 console.error('Lỗi gửi webhook:', err);
-                messageBox.classList.remove('text-yellow-700', 'bg-yellow-100');
+                messageBox.classList.remove('text-yellow-700', 'bg-yellow-100', 'text-green-700', 'bg-green-100');
                 messageBox.classList.add('text-red-700', 'bg-red-100');
                 messageBox.innerHTML = `❌ Có lỗi xảy ra khi gửi dữ liệu: <b>${err.message}</b>. Vui lòng chụp màn hình và báo lại!`;
             });
@@ -422,7 +426,7 @@
         function initializeCards() {
             if (cardsInitialized) return;
             
-            // 1. Tính toán và hiển thị tuần
+            // 1. Tính toán và hiển thị tuần (Tuần kế tiếp)
             const triggerDate = getTriggerDateFromURL();
             const weekData = calculateWeekFromTriggerDate(triggerDate);
             weekDates = weekData; // Lưu dữ liệu tuần
