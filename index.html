@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bốc Thăm Tuần - 7 Phiếu Chung</title>
+    <title>Bốc Thăm Tuần</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -177,10 +177,10 @@
         let telegramUser = null;
         let weekDates = {};
         let cardsInitialized = false;
+        let storageKey = ''; // Sẽ được gán sau khi tính toán weekDates
 
         // === FUNCTION CHUẨN HÓA NGÀY THÁNG ===
         function formatDate(date) {
-            // Định dạng: dd/mm
             return date.toLocaleDateString('vi-VN', {
                 day: '2-digit',
                 month: '2-digit'
@@ -205,12 +205,10 @@
             const daysOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
             const week = {};
             
-            // Sao chép ngày mốc
             const currentDay = new Date(triggerDate); 
             
             // 1. Tìm ngày Thứ Hai của tuần HIỆN TẠI
-            let dayIndex = currentDay.getDay(); // 0=CN, 1=T2, ..., 6=T7
-            // Nếu là CN (0), lùi 6 ngày. Nếu là T2 (1), lùi 0 ngày.
+            let dayIndex = currentDay.getDay(); 
             const daysToMonday = (dayIndex === 0) ? 6 : dayIndex - 1;
             currentDay.setDate(currentDay.getDate() - daysToMonday); 
 
@@ -219,13 +217,11 @@
             
             // 3. Lặp qua 7 ngày, bắt đầu từ Thứ Hai của tuần kế tiếp
             for (let i = 0; i < 7; i++) {
-                // Key được map: [1] = monday, [2] = tuesday, ...
                 const dayKey = daysOfWeek[(i + 1) % 7]; 
                 week[dayKey] = formatDate(currentDay); 
-                currentDay.setDate(currentDay.getDate() + 1); // Tăng ngày lên 1
+                currentDay.setDate(currentDay.getDate() + 1); 
             }
             
-            // Sắp xếp lại thứ tự ngày tháng (T2 -> CN)
             const orderedDates = [
                 week.monday, week.tuesday, week.wednesday, week.thursday, 
                 week.friday, week.saturday, week.sunday
@@ -251,13 +247,75 @@
                 });
             }
             
-            // Xáo trộn thứ tự các thẻ
-            for(let i = cards.length - 1; i > 0; i--){
-                const j = Math.floor(Math.random() * (i + 1));
-                [cards[i], cards[j]] = [cards[j], cards[i]];
+            // Lấy thứ tự xáo trộn cũ nếu có (chỉ lần đầu tiên tạo card)
+            if (!cardsInitialized) {
+                const savedResult = getSavedResult();
+                let shuffledCards = cards;
+                
+                if (savedResult && savedResult.shuffledCards) {
+                    // Nếu có kết quả cũ, sử dụng thứ tự xáo trộn cũ
+                    shuffledCards = savedResult.shuffledCards;
+                    console.log('Using saved card order.');
+                } else {
+                    // Nếu chưa có, xáo trộn mới
+                    for(let i = cards.length - 1; i > 0; i--){
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [cards[i], cards[j]] = [cards[j], cards[i]];
+                    }
+                    console.log('New card order generated.');
+                }
+                
+                return shuffledCards;
             }
-            
+            // Trường hợp này không nên xảy ra nếu logic initializeCards đúng
             return cards;
+        }
+
+        // === FUNCTION LƯU VÀ LẤY KẾT QUẢ TỪ LOCALSTORAGE ===
+        function getSavedResult() {
+            try {
+                const saved = localStorage.getItem(storageKey);
+                return saved ? JSON.parse(saved) : null;
+            } catch (e) {
+                console.error('Error reading localStorage:', e);
+                return null;
+            }
+        }
+
+        function saveResult(selectedIndex, selectedDay, selectedDate, shuffledCards) {
+            const result = {
+                selectedIndex: selectedIndex,
+                selectedDay: selectedDay,
+                selectedDate: selectedDate,
+                shuffledCards: shuffledCards // Lưu trữ thứ tự thẻ
+            };
+            try {
+                localStorage.setItem(storageKey, JSON.stringify(result));
+            } catch (e) {
+                console.error('Error writing localStorage:', e);
+            }
+        }
+        
+        function displaySavedResult(savedResult) {
+            // Lật và khóa thẻ đã chọn
+            const selectedCardElement = document.querySelector(`.flip-card[data-index="${savedResult.selectedIndex}"]`);
+            if (selectedCardElement) {
+                selectedCardElement.classList.add('flipped');
+                selectedCardElement.querySelector('.flip-card-inner').classList.add('selected-card');
+            }
+
+            // Khóa tất cả các thẻ
+            document.querySelectorAll('.flip-card').forEach(card => card.classList.add('locked'));
+            
+            // Hiển thị kết quả
+            resultIndexElement.textContent = savedResult.selectedIndex;
+            resultDateElement.textContent = `${savedResult.selectedDay} (${savedResult.selectedDate})`;
+            resultSection.classList.remove('hidden');
+
+            // Hiển thị thông báo
+            messageBox.classList.remove('text-blue-700', 'bg-blue-100');
+            messageBox.classList.add('text-green-700', 'bg-green-100');
+            messageBox.innerHTML = `🌟 <b>ĐÃ BỐC THĂM!</b> Kết quả Index <b>${savedResult.selectedIndex}</b> đã được ghi nhận vào tuần này.`;
         }
 
         // === FUNCTION TẠO CẤU TRÚC THẺ HTML ===
@@ -289,7 +347,8 @@
             return card;
         }
         
-        // === FUNCTION XỬ LÝ TELEGRAM WEB APP VÀ USER INFO ===
+        // ... (Các hàm initTelegramWebApp, updateUserInfo, showFallbackUserInfo giữ nguyên)
+
         function initTelegramWebApp() {
             return new Promise((resolve) => {
                 if (window.Telegram && window.Telegram.WebApp) {
@@ -347,11 +406,17 @@
         // === FUNCTION XỬ LÝ CLICK VÀ GỬI WEBHOOK ===
         function handleCardClick(event) {
             const cardElement = event.currentTarget;
+            // Lấy tất cả thông tin thẻ hiện tại (đã xáo trộn) để lưu trữ
+            const currentShuffledCards = Array.from(document.querySelectorAll('.flip-card')).map(el => ({
+                index: parseInt(el.getAttribute('data-index')),
+                day: el.getAttribute('data-day'),
+                date: el.getAttribute('data-date')
+            }));
+
             if(cardElement.classList.contains('flipped') || cardElement.classList.contains('locked')) return;
 
             cardElement.classList.add('flipped');
             const innerCard = cardElement.querySelector('.flip-card-inner');
-            // Khóa tất cả các thẻ còn lại
             document.querySelectorAll('.flip-card').forEach(card => card.classList.add('locked'));
 
             selectedIndex = parseInt(cardElement.getAttribute('data-index'));
@@ -359,6 +424,9 @@
             const selectedDate = cardElement.getAttribute('data-date');
             
             innerCard.classList.add('selected-card');
+            
+            // ⭐️ BƯỚC MỚI: LƯU KẾT QUẢ VÀO LOCALSTORAGE TRƯỚC KHI GỬI
+            saveResult(selectedIndex, selectedDay, selectedDate, currentShuffledCards);
 
             // Hiển thị kết quả
             resultIndexElement.textContent = selectedIndex;
@@ -370,8 +438,8 @@
             messageBox.classList.add('text-yellow-700', 'bg-yellow-100');
             messageBox.innerHTML = `⏳ <b>ĐANG GỬI KẾT QUẢ...</b> Vui lòng chờ.`;
 
-            // URL Webhook PRODUCTION của bạn (ĐÃ SỬA)
-            const webhookUrl = "https://nhunguyenbkan.app.n8n.cloud/webhook/34276554-fab1-466c-afd7-bea2bf7a38f0"; 
+            // URL Webhook PRODUCTION của bạn
+            const webhookUrl = "https://nhunguyenbkan.app.n8n.cloud/webhook/34276555-fab1-466c-afd7-bea2bf7a38f0"; 
             
             const payload = {
                 action: "lottery_selection",
@@ -385,7 +453,7 @@
                 user_username: telegramUser.username,
                 trigger_date: getTriggerDateFromURL().toISOString(),
                 timestamp: new Date().toISOString(),
-                source: 'telegram_web_app_v3_next_week_fix'
+                source: 'telegram_web_app_v4_with_storage'
             };
 
             fetch(webhookUrl, {
@@ -395,7 +463,6 @@
             })
             .then(res => {
                 if (!res.ok) {
-                    // Nếu n8n trả về lỗi HTTP (ví dụ: 400, 500)
                     throw new Error(`HTTP error! Status: ${res.status}. Vui lòng kiểm tra N8N.`);
                 }
                 return res.text();
@@ -406,7 +473,6 @@
                 messageBox.classList.add('text-green-700', 'bg-green-100');
                 messageBox.innerHTML = `✅ <b>BỐC THĂM THÀNH CÔNG!</b> Index <b>${selectedIndex}</b> - ${selectedDay} đã được ghi nhận.`;
                 
-                // Tự động đóng web app sau 3 giây
                 setTimeout(() => {
                     if (window.Telegram && window.Telegram.WebApp) {
                         window.Telegram.WebApp.close();
@@ -414,8 +480,6 @@
                 }, 3000);
             })
             .catch(err => {
-                // Bắt lỗi mạng (Failed to fetch) hoặc lỗi HTTP từ server
-                console.error('Lỗi gửi webhook:', err);
                 messageBox.classList.remove('text-yellow-700', 'bg-yellow-100', 'text-green-700', 'bg-green-100');
                 messageBox.classList.add('text-red-700', 'bg-red-100');
                 messageBox.innerHTML = `❌ Có lỗi xảy ra khi gửi dữ liệu: <b>${err.message}</b>. Vui lòng chụp màn hình và báo lại!`;
@@ -426,33 +490,42 @@
         function initializeCards() {
             if (cardsInitialized) return;
             
-            // 1. Tính toán và hiển thị tuần (Tuần kế tiếp)
+            // 1. Tính toán và hiển thị tuần
             const triggerDate = getTriggerDateFromURL();
             const weekData = calculateWeekFromTriggerDate(triggerDate);
-            weekDates = weekData; // Lưu dữ liệu tuần
+            weekDates = weekData;
             weekRangeElement.textContent = weekData.week_range;
             
-            // 2. Tạo và hiển thị cards
-            const indexCards = generateIndexCards();
+            // 2. Gán Storage Key dựa trên tuần
+            // Việc thêm weekDates.week_range vào key giúp tránh nhầm lẫn kết quả giữa các tuần
+            storageKey = 'lottery_result_' + weekDates.week_range.replace(/\s/g, '_'); 
+
+            // 3. Kiểm tra kết quả cũ
+            const savedResult = getSavedResult();
+            
+            // 4. Tạo và hiển thị cards
+            // Hàm generateIndexCards() sẽ sử dụng thứ tự cũ nếu savedResult tồn tại
+            const indexCards = generateIndexCards(); 
+            
             indexCards.forEach(cardData => {
                 const card = createCard(cardData);
                 cardContainer.appendChild(card);
             });
             
             cardsInitialized = true;
+            
+            // 5. Nếu có kết quả cũ, hiển thị nó ngay lập tức
+            if (savedResult) {
+                displaySavedResult(savedResult);
+            }
         }
 
         async function initializeApp() {
-            // 1. Khởi tạo Telegram Web App và User Info
             await initTelegramWebApp();
-            
-            // 2. Khởi tạo các thẻ bốc thăm
             initializeCards();
-            
             console.log('App initialized successfully');
         }
 
-        // Bắt đầu khởi tạo khi DOM ready
         document.addEventListener('DOMContentLoaded', initializeApp);
     </script>
 </body>
